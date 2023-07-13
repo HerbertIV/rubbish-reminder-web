@@ -1,15 +1,15 @@
 <template>
   <img alt="Vue logo" src="./assets/logo.png" />
-  <HelloWorld msg="Welcome to Your Vue.js App" />
+  <InitPush />
 </template>
 
 <script>
-import HelloWorld from "./components/HelloWorld.vue";
+import InitPush from "./components/InitPush.vue";
 
 export default {
   name: "App",
   components: {
-    HelloWorld,
+    InitPush,
   },
 };
 </script>

@@ -1,6 +1,8 @@
 <template>
   <div class="hello">
     <h1>{{ msg }}</h1>
+    <button @click="initializeFirebase">INIT token</button>
+    <span data-token>{{ token }}</span>
     <p>
       For a guide and recipes on how to configure / customize this project,<br />
       check out the
@@ -95,12 +97,82 @@
 </template>
 
 <script>
+import * as firebase from "firebase/app";
+import "firebase/messaging";
 export default {
   name: "HelloWorld",
   props: {
     msg: String,
   },
-};
+  data() {
+    return {
+      // use a getter and setter to watch the user's notification preference in local storage
+      get requestPermission() {
+        return (localStorage.getItem("notificationPref") === null)
+      },
+      set requestPermission(value) {
+        localStorage.setItem("notificationPref", value)
+      }
+    }
+  },
+  mounted() {
+    this.initializeFirebase();
+  },
+  methods: {
+    registerToken(token) {
+      axios.get(
+          "/api/check",
+          {
+            headers: {
+              "Content-type": "application/json",
+              Accept: "application/json",
+              "device-key": token,
+              "device-type": 'web'
+            }
+          }
+      ).then(response => {
+      });
+    },
+
+    enableNotifications() {
+      if (!("Notification" in window)) {
+        alert("Notifications are not supported");
+      } else if (Notification.permission === "granted") {
+        this.initializeFirebase();
+      } else if (Notification.permission !== "denied") {
+        Notification.requestPermission().then((permission) => {
+          if (permission === "granted") {
+            this.initializeFirebase();
+          }
+        })
+      } else {
+        alert("No permission to send notification")
+      }
+      this.requestPermission = Notification.permission;
+    },
+
+    initializeFirebase() {
+      if (firebase.messaging.isSupported()) {
+        let config = {
+          apiKey: "AIzaSyAhixKv2Ah_QXF96gOUF2zxpoec2JFhsPg",
+          authDomain: "rubishback.firebaseapp.com",
+          projectId: "rubishback",
+          messagingSenderId: "163284422021",
+          appId: "1:163284422021:web:1b14da1eee2698000608ec",
+        };
+        !firebase.apps.length ? firebase.initializeApp(config) : firebase.app();
+        const messaging = firebase.messaging();
+        messaging.getToken()
+          .then((token) => {
+            this.registerToken(token);
+          })
+          .catch((err) => {
+            console.log('An error occurred while retrieving token. ', err);
+          });
+      }
+    },
+  },
+}
 </script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
