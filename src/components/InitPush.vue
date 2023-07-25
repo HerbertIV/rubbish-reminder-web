@@ -1,15 +1,37 @@
 <template>
-  <button v-if="token" @click="initializeFirebase">INIT token</button>
+  <v-sheet width="300" class="mx-auto">
+    <v-form @submit.prevent="submit">
+      <multiselect
+        :class="['multiselect-dropdown']"
+        v-model="community"
+        :options="communities"
+        label="name"
+        @search-change="getCommunities"
+        :loading="loading"
+        :hide-selected="true"
+      ></multiselect>
+      <v-text-field v-model="token"></v-text-field>
+      <v-btn type="submit" block class="mt-2" :loading="loading">Submit</v-btn>
+    </v-form>
+    <button @click="initializeFirebase" type="button" class="btn btn-primary">
+      Get token
+    </button>
+    <p v-if="token">{{ token }}</p>
+    <p v-else>{{ message }}</p>
+  </v-sheet>
 </template>
 <script>
 import * as firebase from "firebase/app";
 import "firebase/messaging";
 import axios from "axios";
+import Multiselect from "vue-multiselect";
 
 export default {
+  components: { Multiselect },
   name: "InitPush",
   data() {
     return {
+      loading: false,
       // use a getter and setter to watch the user's notification preference in local storage
       get requestPermission() {
         return localStorage.getItem("notificationPref") === null;
@@ -17,15 +39,25 @@ export default {
       set requestPermission(value) {
         localStorage.setItem("notificationPref", value);
       },
-      token: "",
+      token: "Test",
+      message: "",
+      community: "",
+      communities: [],
     };
   },
+  watch: {
+    community(val) {
+      val && this.getCommunities(val);
+    },
+  },
   mounted() {
-    this.initializeFirebase();
+    console.log("community", this.community);
+    // this.enableNotifications();
+    // this.initializeFirebase();
   },
   methods: {
     registerToken(token) {
-      console.log("s", token);
+      this.token = token;
       axios
         .get(process.env.VUE_APP_API_URL + "/check", {
           headers: {
@@ -35,12 +67,11 @@ export default {
             "device-type": "web",
           },
         })
-        .then(() => {
-          this.token = token;
-        });
+        .then();
     },
 
     enableNotifications() {
+      this.message = Notification.permission;
       if (!("Notification" in window)) {
         alert("Notifications are not supported");
       } else if (Notification.permission === "granted") {
@@ -87,6 +118,55 @@ export default {
           });
       }
     },
+    async getCommunities(val) {
+      const { data } = await axios.get(
+        process.env.VUE_APP_API_URL + "/regions" + (val ? "?q=" + val : "")
+      );
+      console.log(data.data);
+      this.communities = data.data;
+    },
+    async submit() {
+      this.loading = true;
+      const results = await axios.post(
+        process.env.VUE_APP_API_URL + "/check-region",
+        {
+          token: this.token,
+          community: this.community,
+        }
+      );
+      this.loading = false;
+      alert(JSON.stringify(results, null, 2));
+    },
   },
 };
 </script>
+<style>
+.multiselect-dropdown {
+  background: #f6f6f6;
+  border-bottom: 1px #a5a5a5 solid;
+  padding: 15px;
+  text-align: left;
+}
+.multiselect__content {
+  padding: 0;
+  width: 100%;
+}
+.multiselect__content li {
+  list-style-type: none;
+  margin: 0;
+}
+.multiselect__content li .multiselect__option {
+  background: #f6f6f6;
+  padding: 15px;
+  text-align: left;
+  display: block;
+}
+.multiselect__content li .multiselect__option:hover {
+  background: gray;
+  cursor: pointer;
+  transition: 0.7;
+}
+.multiselect__content .multiselect__element .multiselect__option--highlight {
+  background: gray;
+}
+</style>
