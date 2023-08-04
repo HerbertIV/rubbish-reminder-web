@@ -1,34 +1,48 @@
 <template>
   <v-sheet width="300" class="mx-auto">
     <v-form @submit.prevent="submit">
-      <multiselect
-        :class="['multiselect-dropdown']"
+      <Multiselect
+        :optionsStatic="communities"
         v-model="community"
-        :options="communities"
-        label="name"
-        @search-change="getCommunities"
-        :loading="loading"
-        :hide-selected="true"
-      ></multiselect>
-      <v-text-field v-model="token"></v-text-field>
+        :url="urlToCommunities"
+      >
+      </Multiselect>
+      <v-text-field ref="token" v-model="token"></v-text-field>
       <v-btn type="submit" block class="mt-2" :loading="loading">Submit</v-btn>
     </v-form>
-    <button @click="initializeFirebase" type="button" class="btn btn-primary">
+    <button
+      v-if="!token"
+      @click="initializeFirebase"
+      type="button"
+      class="btn btn-primary mt-3"
+    >
       Get token
     </button>
-    <p v-if="token">{{ token }}</p>
-    <p v-else>{{ message }}</p>
+    <div>
+      <div v-if="token">
+        <button
+          type="button"
+          @click="copyToClipboard"
+          class="btn btn-info mt-3"
+        >
+          Copy token
+        </button>
+      </div>
+      <div v-else>
+        {{ message }}
+      </div>
+    </div>
   </v-sheet>
 </template>
 <script>
 import * as firebase from "firebase/app";
 import "firebase/messaging";
 import axios from "axios";
-import Multiselect from "vue-multiselect";
+import Multiselect from "@/components/inputs/Multiselect";
 
 export default {
-  components: { Multiselect },
   name: "InitPush",
+  components: { Multiselect },
   data() {
     return {
       loading: false,
@@ -39,21 +53,20 @@ export default {
       set requestPermission(value) {
         localStorage.setItem("notificationPref", value);
       },
-      token: "Test",
+      token: "",
+      urlToCommunities: process.env.VUE_APP_API_URL + "/regions",
       message: "",
       community: "",
       communities: [],
     };
   },
-  watch: {
-    community(val) {
-      val && this.getCommunities(val);
-    },
-  },
   mounted() {
-    console.log("community", this.community);
-    // this.enableNotifications();
-    // this.initializeFirebase();
+    // if (!this.token) {
+    //   this.enableNotifications();
+    // }
+    // if (this.communities.length === 0) {
+    //   this.getCommunities();
+    // }
   },
   methods: {
     registerToken(token) {
@@ -69,7 +82,13 @@ export default {
         })
         .then();
     },
-
+    copyToClipboard() {
+      const token = this.$refs.token;
+      // Wybierz tekst w elemencie textarea
+      token.select();
+      // Skopiuj wybrany tekst do schowka
+      document.execCommand("copy");
+    },
     enableNotifications() {
       this.message = Notification.permission;
       if (!("Notification" in window)) {
@@ -88,8 +107,8 @@ export default {
       this.requestPermission = Notification.permission;
     },
 
-    initializeFirebase() {
-      if (firebase.messaging.isSupported()) {
+    async initializeFirebase() {
+      if (firebase.messaging.isSupported() && !this.token) {
         let config = {
           apiKey: process.env.VUE_APP_FIREBASE_API_KEY,
           authDomain: process.env.VUE_APP_FIREBASE_AUTH_DOMAIN,
@@ -118,55 +137,29 @@ export default {
           });
       }
     },
-    async getCommunities(val) {
-      const { data } = await axios.get(
-        process.env.VUE_APP_API_URL + "/regions" + (val ? "?q=" + val : "")
-      );
-      console.log(data.data);
-      this.communities = data.data;
-    },
     async submit() {
       this.loading = true;
-      const results = await axios.post(
-        process.env.VUE_APP_API_URL + "/check-region",
-        {
-          token: this.token,
-          community: this.community,
-        }
-      );
+      if (!this.token) {
+        await this.initializeFirebase();
+      }
+      if (this.token) {
+        await axios.post(
+          process.env.VUE_APP_API_URL + "/check-region",
+          {
+            region_id: this.community.id,
+          },
+          {
+            headers: {
+              "Content-type": "application/json",
+              Accept: "application/json",
+              "device-key": this.token,
+              "device-type": "web",
+            },
+          }
+        );
+      }
       this.loading = false;
-      alert(JSON.stringify(results, null, 2));
     },
   },
 };
 </script>
-<style>
-.multiselect-dropdown {
-  background: #f6f6f6;
-  border-bottom: 1px #a5a5a5 solid;
-  padding: 15px;
-  text-align: left;
-}
-.multiselect__content {
-  padding: 0;
-  width: 100%;
-}
-.multiselect__content li {
-  list-style-type: none;
-  margin: 0;
-}
-.multiselect__content li .multiselect__option {
-  background: #f6f6f6;
-  padding: 15px;
-  text-align: left;
-  display: block;
-}
-.multiselect__content li .multiselect__option:hover {
-  background: gray;
-  cursor: pointer;
-  transition: 0.7;
-}
-.multiselect__content .multiselect__element .multiselect__option--highlight {
-  background: gray;
-}
-</style>

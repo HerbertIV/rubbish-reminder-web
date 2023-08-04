@@ -1,15 +1,27 @@
-<template>
-  <img alt="Vue logo" src="./assets/logo.png" />
-  <InitPush />
+<template class="d-flex h-100 text-center text-bg-dark">
+  <v-container>
+    <v-row justify="center">
+      <v-col cols="12" sm="6">
+        <v-card class="pa-2" outlined tile>
+          <div
+            class="cover-container d-flex w-100 h-100 p-3 mx-auto flex-column"
+          >
+            <Header />
+            <router-view></router-view>
+          </div>
+        </v-card>
+      </v-col>
+    </v-row>
+  </v-container>
 </template>
 
 <script>
-import InitPush from "./components/InitPush.vue";
+import Header from "@/components/layout/Header";
 
 export default {
   name: "App",
   components: {
-    InitPush,
+    Header,
   },
 };
 </script>
@@ -22,5 +34,8 @@ export default {
   text-align: center;
   color: #2c3e50;
   margin-top: 60px;
+}
+body {
+  background-color: darkcyan;
 }
 </style>
